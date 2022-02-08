@@ -1,0 +1,16 @@
+<ul id="lists">
+  <% sort_by_with_index(@lists) { |(l, _)| complete?(l) ? 1 : 0 }.each do |list| %>
+    <li <%= 'class="complete"' if complete?(list.first) %>>
+      <a href="/lists/<%= list.last %>">
+        <h2>
+          <%= list.first[:name] %>
+        </h2>
+        <p><%= stats(list.first) %></p>
+      </a>
+    </li>
+  <% end %>
+</ul>
+
+<% content_for :header_links do %>
+  <a class="add" href="/lists/new">New List</a>
+<% end %>
