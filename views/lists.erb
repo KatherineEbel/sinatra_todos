@@ -1,11 +1,11 @@
 <ul id="lists">
-  <% sort_by_with_index(@lists) { |(l, _)| complete?(l) ? 1 : 0 }.each do |list| %>
-    <li <%= 'class="complete"' if complete?(list.first) %>>
-      <a href="/lists/<%= list.last %>">
+  <% sort_by_with_index(@lists) { |(l, _)| complete?(l) ? 1 : 0 }.each do |(list, idx)| %>
+    <li class="<%= list_class(list) %>">
+      <a href="/lists/<%= idx %>">
         <h2>
-          <%= list.first[:name] %>
+          <%= "#{list[:name]}" %>
         </h2>
-        <p><%= stats(list.first) %></p>
+        <p><%= stats(list) %></p>
       </a>
     </li>
   <% end %>

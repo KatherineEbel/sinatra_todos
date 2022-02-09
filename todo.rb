@@ -6,6 +6,7 @@ require "tilt/erubis"
 configure do
   enable :sessions, :method_override
   set :session_secret, 'secret'
+  set :erb, escape_html: true
 end
 
 before do
@@ -13,6 +14,14 @@ before do
 end
 
 helpers do
+  def list_class(list)
+    'complete' if complete?(list)
+  end
+
+  def todo_class(todo)
+    'complete' if todo[:completed]
+  end
+
   def complete?(list)
     !list[:todos].empty? && list[:todos].all? { |todo| todo[:completed] }
   end
@@ -50,7 +59,11 @@ def unique?(name, collection)
 end
 
 def list_at(index)
-  session[:lists].at(index.to_i)
+  list = session[:lists].at(index.to_i)
+  return list if list
+
+  session[:error] = 'List not found'
+  redirect '/lists'
 end
 
 get "/" do
@@ -71,13 +84,13 @@ end
 # show a list
 get "/lists/:id" do
   list = list_at(params[:id])
-  halt(404) unless list
   erb :list, locals: { list: }
 end
 
 # show edit list form
 get '/lists/:id/edit' do
-  erb :edit_list, locals: { list: list_at(params[:id]) }
+  list = list_at(params[:id])
+  erb :edit_list, locals: { list: }
 end
 
 # add a list
@@ -99,10 +112,10 @@ put "/lists/:id" do
   id = params[:id].to_i
   list_name = params[:list_name].strip
   list = list_at(id)
-  error_message = validate(list_name, list)
+  error_message = validate(list_name, session[:lists])
   if error_message
     session[:error] = error_message
-    erb :new_list, layout: :layout
+    erb :edit_list, layout: :layout, locals: { list: }
   else
     list[:name] = list_name
     session[:success] = 'The list has been updated.'
@@ -113,8 +126,12 @@ end
 # delete list
 delete "/lists/:id" do
   list = session[:lists].delete_at(params[:id].to_i)
-  session[:success] = 'List deleted' if list
-  redirect "/lists"
+  if request.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
+    "/lists"
+  else
+    session[:success] = 'List deleted' if list
+    redirect "/lists"
+  end
 end
 
 # add todo to list
@@ -143,11 +160,16 @@ put "/lists/:id/todos/:todo_id" do
   redirect "/lists/#{params[:id]}"
 end
 
+# delete a todo
 delete "/lists/:id/todos/:todo_id" do
   list = list_at(params[:id])
   todo = list[:todos].delete_at(params[:todo_id].to_i)
-  session[:success] = 'Todo deleted' if todo
-  redirect "/lists/#{params[:id]}"
+  if request.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
+    status 204
+  else
+    session[:success] = 'Todo deleted' if todo
+    redirect "/lists/#{params[:id]}"
+  end
 end
 
 not_found do
