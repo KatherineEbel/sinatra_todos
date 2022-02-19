@@ -3,6 +3,8 @@ require "sinatra/reloader" if development?
 require 'sinatra/content_for'
 require "tilt/erubis"
 
+require_relative 'session_persistence'
+
 configure do
   enable :sessions, :method_override
   set :session_secret, 'secret'
@@ -10,7 +12,7 @@ configure do
 end
 
 before do
-  session[:lists] ||= []
+  @storage = SessionPersistence.new(session)
 end
 
 helpers do
@@ -27,7 +29,7 @@ helpers do
   end
 
   def stats(list)
-    total = list[:todos].size
+    total    = list[:todos].size
     num_left = list[:todos].count { |todo| !todo[:completed] }
     "#{num_left} / #{total}"
   end
@@ -42,27 +44,10 @@ def with_idx(collection)
   collection.map.with_index { |item, idx| [item, idx] }
 end
 
-def validate(name, list)
-  if !valid_length?(name)
-    "Name must be between 1 and 50 characters"
-  elsif !unique?(name, list)
-    "Name must be unique"
-  end
-end
-
-def valid_length?(name)
-  name&.size&.between?(1, 50)
-end
-
-def unique?(name, collection)
-  collection.none? { |item| item[:name] == name }
-end
-
 def list_at(index)
-  list = session[:lists].at(index.to_i)
+  list = @storage.find_list(index)
   return list if list
 
-  session[:error] = 'List not found'
   redirect '/lists'
 end
 
@@ -72,7 +57,7 @@ end
 
 # show all list
 get "/lists" do
-  @lists = session[:lists]
+  @lists = @storage.lists
   erb :lists, layout: :layout
 end
 
@@ -83,91 +68,82 @@ end
 
 # show a list
 get "/lists/:id" do
-  list = list_at(params[:id])
+  list = @storage.find_list(params[:id].to_i)
+  redirect '/lists' if list.nil?
   erb :list, locals: { list: }
 end
 
 # show edit list form
 get '/lists/:id/edit' do
-  list = list_at(params[:id])
+  list = @storage.find_list(params[:id].to_i)
   erb :edit_list, locals: { list: }
 end
 
 # add a list
 post '/lists' do
-  list_name = params[:list_name].strip
-  error_message = validate(list_name, session[:lists])
-  if error_message
-    session[:error] = error_message
+  @storage.add_list(params[:list_name].strip)
+  if @storage.error?
     erb :new_list, layout: :layout
   else
-    session[:lists] << { name: list_name, todos: [] }
-    session[:success] = 'The list has been created.'
     redirect '/lists'
   end
 end
 
 # update list name
 put "/lists/:id" do
-  id = params[:id].to_i
-  list_name = params[:list_name].strip
-  list = list_at(id)
-  error_message = validate(list_name, session[:lists])
-  if error_message
-    session[:error] = error_message
+  id        = params[:id].to_i
+  list      = @storage.update_list(id, params[:list_name].strip)
+  if @storage.error?
     erb :edit_list, layout: :layout, locals: { list: }
   else
-    list[:name] = list_name
-    session[:success] = 'The list has been updated.'
     redirect "/lists/#{id}"
   end
 end
 
 # delete list
 delete "/lists/:id" do
-  list = session[:lists].delete_at(params[:id].to_i)
+  list = @storage.delete_list(params[:id].to_i)
+  redirect '/lists' if list.nil?
   if request.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
     "/lists"
   else
-    session[:success] = 'List deleted' if list
     redirect "/lists"
   end
 end
 
 # add todo to list
 post "/lists/:id/todos" do
-  list = list_at(params[:id])
-  todo = params[:todo]
-  error_message = validate(todo, list[:todos])
-  if error_message
-    session[:error] = error_message
-    erb :list, locals: { id: params[:id], list: }
+  list = @storage.add_todo(params[:id].to_i, params[:todo])
+  if @storage.error?
+    erb :list,
+        locals: { id: params[:id], list: }
   else
-    list[:todos] << { name: todo, completed: false }
-    session[:success] = 'Todo added'
     redirect "/lists/#{params[:id]}"
   end
 end
 
+# complete list
 post "/lists/:id/complete" do
-  list_at(params[:id])[:todos].each { |todo| todo[:completed] = true }
+  @storage.complete_list(params[:id].to_i)
   redirect "/lists/#{params[:id]}"
 end
 
+# toggle complete
 put "/lists/:id/todos/:todo_id" do
-  list = list_at(params[:id])
-  list[:todos][params[:todo_id].to_i][:completed] = params[:completed] == "true"
+  list_id, todo_id = [params[:id], params[:todo_id]].map(&:to_i)
+  @storage.toggle_complete(list_id, todo_id)
   redirect "/lists/#{params[:id]}"
 end
 
 # delete a todo
 delete "/lists/:id/todos/:todo_id" do
-  list = list_at(params[:id])
-  todo = list[:todos].delete_at(params[:todo_id].to_i)
+  todo = @storage.delete_todo(params[:id].to_i, params[:todo_id].to_i)
+  if todo.nil?
+    halt not_found
+  end
   if request.env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
     status 204
   else
-    session[:success] = 'Todo deleted' if todo
     redirect "/lists/#{params[:id]}"
   end
 end
