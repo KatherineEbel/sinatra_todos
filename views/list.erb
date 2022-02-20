@@ -1,6 +1,6 @@
 <section id="todos" class="<%= list_class(list) %>">
   <header>
-    <h2><%= list[:name] %></h2>
+    <h2><%= list.name %></h2>
     <ul>
       <li>
         <form action="/lists/<%= params[:id] %>/complete" method="post">
@@ -12,15 +12,15 @@
   </header>
 
   <ul>
-    <% sort_by_with_index(list[:todos]) { |(t, _)| t[:completed] ? 1 : 0 }.each do |(todo, idx)| %>
+    <% list.todos.group_by(&:completed).values.flatten.reverse.each do |todo| %>
       <li class="<%= todo_class(todo) %>">
-        <h3><%= todo[:name] %></h3>
-        <form action="/lists/<%= params[:id] %>/todos/<%= idx %>" method="post" class="check">
+        <h3><%= todo.name %></h3>
+        <form action="/lists/<%= params[:id] %>/todos/<%= todo.id %>" method="post" class="check">
           <input type="hidden" name="_method" value="PUT" />
-          <input type="hidden" name="completed" value="<%= !todo[:completed] %>" />
+          <input type="hidden" name="completed" value="<%= !todo.completed %>" />
           <button type="submit">Complete</button>
         </form>
-        <form action="/lists/<%= params[:id] %>/todos/<%= idx %>" method="post" class="delete">
+        <form action="/lists/<%= params[:id] %>/todos/<%= todo.id %>" method="post" class="delete">
           <input type="hidden" name="_method" value="DELETE" />
           <button type="submit">Delete</button>
         </form>

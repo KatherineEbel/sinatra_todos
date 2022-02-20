@@ -8,6 +8,7 @@ group :development do
 end
 
 gem 'erubis'
+gem 'pg'
 gem 'sinatra'
 gem 'sinatra-contrib'
 

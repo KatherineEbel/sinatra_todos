@@ -19,6 +19,7 @@
     <orderEntry type="library" scope="PROVIDED" name="nio4r (v2.5.8, asdf: 3.1.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="parallel (v1.21.0, asdf: 3.1.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="parser (v3.1.0.0, asdf: 3.1.0) [gem]" level="application" />
+    <orderEntry type="library" scope="PROVIDED" name="pg (v1.3.2, asdf: 3.1.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="puma (v5.6.1, asdf: 3.1.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rack (v2.2.3, asdf: 3.1.0) [gem]" level="application" />
     <orderEntry type="library" scope="PROVIDED" name="rack-protection (v2.1.0, asdf: 3.1.0) [gem]" level="application" />
