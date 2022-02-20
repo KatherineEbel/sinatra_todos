@@ -20,6 +20,10 @@ before do
   @storage = DatabasePersistence.new(logger)
 end
 
+after do
+  @storage.disconnect
+end
+
 helpers do
   def list_class(list)
     'complete' if list.complete?

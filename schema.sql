@@ -1,4 +1,4 @@
-CREATE DATABASE todos;
+-- CREATE DATABASE todos;
 
 CREATE TABLE lists (
     id serial PRIMARY KEY,

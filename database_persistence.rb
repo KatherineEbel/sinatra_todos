@@ -5,27 +5,12 @@ class DatabasePersistence
   attr_reader :logger, :db, :error
 
   def initialize(logger)
-    @db     = PG.connect(dbname: 'todos')
+    @db     = if Sinatra::Base.production?
+                PG.connect(ENV['DATABASE_URL'])
+              else
+                PG.connect(dbname: 'todos')
+              end
     @logger = logger
-  end
-
-  def clear_error
-    self.error = nil
-  end
-
-  def error=(error)
-    logger.error(error)
-    @error = error
-  end
-
-  def merge_rows(rows)
-    rows.each_with_index.each_with_object([]) do |(r, i), result|
-      if i.zero?
-        result.concat(r.shift(2), r)
-      else
-        result.concat(r.drop(2))
-      end
-    end
   end
 
   def lists
@@ -99,7 +84,26 @@ class DatabasePersistence
     self.error = e
   end
 
-  private :logger, :db, :error=
+  private :logger, :db
+
+  def disconnect
+    @db.close
+  end
+
+  def error=(error)
+    logger.error(error)
+    @error = error
+  end
+
+  def merge_rows(rows)
+    rows.each_with_index.each_with_object([]) do |(r, i), result|
+      if i.zero?
+        result.concat(r.shift(2), r)
+      else
+        result.concat(r.drop(2))
+      end
+    end
+  end
 
   def query(statement, *params)
     logger.info "#{statement}: #{params}"
